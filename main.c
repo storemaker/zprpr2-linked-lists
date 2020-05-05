@@ -31,50 +31,102 @@ typedef struct film {
     struct film *dalsi_film;
 } FILM;
 
+FILM *pridajFilm(FILM *zac, FILM *vloz){
+   FILM *akt = zac;
+   
+   if(zac == NULL) return vloz;
+   while(akt->dalsi_film != NULL)
+      akt = akt->dalsi_film;
+   akt->dalsi_film = vloz;
+   return zac;
+}
+
+HEREC *pridajHerca(HEREC *zac, HEREC *vloz){
+   HEREC *akt = zac;
+   
+   if(zac == NULL) return vloz;
+   while(akt->dalsi_herec != NULL)
+      akt = akt->dalsi_herec;
+   akt->dalsi_herec = vloz;
+   return zac;
+}
+
+void vypisZoznam(FILM *zac) {
+   while(zac != NULL) {
+      printf("%s\n", zac->nazov_filmu);
+      zac = zac->dalsi_film;
+   }
+}
+
 void nacitaj(FILM **filmy)
 {
+    FILM *temp = (FILM *) malloc(sizeof(FILM));
+    HEREC *herci = NULL, *temp_herci = (HEREC *) malloc(sizeof(HEREC));
     FILE *subor;
     char c;
-    int read_mode = 1, line = 1;
+    int read_mode = 1, pocet_filmov = 0, pocet_opakovani = 0;
     
     // osetrenie otvorenia suboru
     if ((subor = fopen(FILE_PATH, "r")) == NULL) {
         printf("Subor filmy.txt sa nepodarilo nacitat.\n");
         return;
     }
-    
-    printf("%d: read_mode: %d\n", line, read_mode);
+
     
     while ((c = getc(subor)) != EOF)
     {
+        
+        // getc vo while posunie pointer na druhy znak v subore
+        // a potom fscanf nenacita prvy znak v subore, toto je
+        // fix pre tuto situaciu
+        pocet_opakovani++;
+        if(pocet_filmov == 0 && pocet_opakovani == 1)
+            temp->nazov_filmu[0] = ungetc(c, subor);
+        
+        // rok vyroby
         if(isnewline(c) && isdigit(fpeek(subor))) {
-            line++;
             read_mode = 2;
-            printf("%d: read_mode: %d\n", line, read_mode);
+        // reziser a novy film
         } else if (isnewline(c) && isalpha(fpeek(subor))) {
-            line++;
+            // reziser
             if (read_mode == 2)
                 read_mode = 3;
-            else if (read_mode == 4)
+            // novy film
+            else if (read_mode == 4) {
+                pocet_filmov++;
                 read_mode = 1;
-            printf("%d: read_mode: %d\n", line, read_mode);
+                //temp->herec = herci;
+                temp->dalsi_film = (FILM *) malloc(sizeof(FILM));
+                *filmy = pridajFilm(*filmy, temp);
+                temp = temp->dalsi_film;
+            }
+        // herci
         } else if (isnewline(c) && !isalpha(fpeek(subor)) && fpeek(subor) != EOF) {
-            line++;
             if (read_mode == 3 || read_mode == 4)
                 read_mode = 4;
-            printf("%d: read_mode: %d\n", line, read_mode);
+            
+            temp_herci->dalsi_herec = (HEREC *) malloc(sizeof(HEREC));
+            herci = pridajHerca(herci, temp_herci);
+            temp_herci = temp_herci->dalsi_herec;
+            
+        // posledny film na pridanie
+        } else if (fpeek(subor) == EOF) {
+            pocet_filmov++;
+            temp->herec = herci;
+            temp->dalsi_film = (FILM *) malloc(sizeof(FILM));
+            *filmy = pridajFilm(*filmy, temp);
+            temp->dalsi_film = NULL;
         }
         
-        /*if (read_mode == 1) {
-            fscanf(subor, "%100[^\n]", (*filmy)->nazov_filmu);
+        if (read_mode == 1) {
+            fscanf(subor, "%100[^\n]s", temp->nazov_filmu);
         } else if (read_mode == 2) {
-            fscanf(subor, "%d", &(*filmy)->rok_vyroby);
+            fscanf(subor, "%d", &temp->rok_vyroby);
         } else if (read_mode == 3) {
-            fscanf(subor, "%100s %100s", (*filmy)->meno_rezisera.krstne_meno, (*filmy)->meno_rezisera.priezvisko);
+            fscanf(subor, "%100s %100s", temp->meno_rezisera.krstne_meno, temp->meno_rezisera.priezvisko);
         } else if (read_mode == 4) {
-            
-            fscanf("%*c %s %s %d", )
-        }*/
+            fscanf(subor, "%*c %s %s %d", temp_herci->meno_herca.krstne_meno, temp_herci->meno_herca.priezvisko, &temp_herci->rok_narodenia);
+        }
         
     }
     
@@ -88,16 +140,9 @@ void nacitaj(FILM **filmy)
 int main(int argc, const char * argv[]) {
     
     FILM *filmy = NULL;
-    filmy = (FILM *) malloc(1 * sizeof(FILM));
-    filmy[0].herec = (HEREC *) malloc(1 * sizeof(HEREC));
     
-    // nazov filmu
-    //scanf("%100s %d %100s %100s", filmy[0].nazov, &filmy[0].rok_vyroby, filmy[0].meno_rezisera.krstne_meno, filmy[0].meno_rezisera.priezvisko);
-    //scanf("%100s %100s", filmy[0].herec->meno_herca.krstne_meno, filmy[0].herec->meno_herca.priezvisko);
-    
-    //printf("%s %d %s %s", filmy[0].nazov, filmy[0].rok_vyroby, filmy[0].meno_rezisera.krstne_meno, filmy[0].meno_rezisera.priezvisko);
-    //printf("%s %s", filmy[0].herec->meno_herca.krstne_meno, filmy[0].herec->meno_herca.priezvisko);
     nacitaj(&filmy);
+    vypisZoznam(filmy);
     
     return 0;
 }
