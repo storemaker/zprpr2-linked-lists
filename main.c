@@ -71,6 +71,20 @@ HEREC *pridajHerca(HEREC *head, char krstne_meno[101], char priezvisko[101], int
     return head;
 }
 
+HEREC *vymazHercov(HEREC *head)
+{
+    HEREC *temp = head;
+    HEREC *tail;
+
+    while (temp != NULL)
+    {
+        tail = temp->dalsi_herec;
+        free(temp);
+        temp = tail;
+    }
+    return NULL;
+}
+
 void vypis(FILM *head)
 {
     if (head == NULL) {
@@ -95,6 +109,8 @@ void vypis(FILM *head)
         head = head->dalsi_film;
         printf("\n");
     }
+    
+    herci = vymazHercov(herci);
 }
 
 FILM *pridaj(FILM *filmy)
@@ -119,20 +135,6 @@ FILM *pridaj(FILM *filmy)
     }
     
     return filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-}
-
-HEREC *vymazHercov(HEREC *head)
-{
-    HEREC *temp = head;
-    HEREC *tail;
-
-    while (temp != NULL)
-    {
-        tail = temp->dalsi_herec;
-        free(temp);
-        temp = tail;
-    }
-    return NULL;
 }
 
 FILM *vymazNtyFilm(FILM *head, int n)
@@ -280,6 +282,8 @@ void vypisFilmovPodlaHerca(FILM *head)
         head = head->dalsi_film;
     }
     
+    herci = vymazHercov(herci);
+    
 }
 
 FILM *vymazFilmy(FILM *head)
@@ -295,6 +299,44 @@ FILM *vymazFilmy(FILM *head)
         temp = tail;
     }
     return NULL;
+}
+
+void rok(FILM *head)
+{
+    HEREC *herci = NULL, *temporary = NULL;
+    int duplicate = 0;
+    
+    while (head != NULL)
+    {
+        while (head->herci != NULL)
+        {
+            temporary = herci;
+            duplicate = 0;
+            
+            while (temporary != NULL) {
+                if(!strcmp(head->herci->meno_herca.krstne_meno, temporary->meno_herca.krstne_meno) && !strcmp(head->herci->meno_herca.priezvisko, temporary->meno_herca.priezvisko))
+                    duplicate = 1;
+                temporary = temporary->dalsi_herec;
+            }
+            
+            if(!duplicate)
+                herci = pridajHerca(herci, head->herci->meno_herca.krstne_meno, head->herci->meno_herca.priezvisko, head->herci->rok_narodenia);
+            head->herci = head->herci->dalsi_herec;
+        }
+        head = head->dalsi_film;
+    }
+    
+    while (herci != NULL)
+    {
+        if(herci->dalsi_herec != NULL)
+            printf("%s %s (%d), ", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
+        else
+            printf("%s %s (%d)", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
+        herci = herci->dalsi_herec;
+    }
+    
+    herci = vymazHercov(herci);
+    
 }
 
 void vyhladanieHercovVoFilmoch(FILM *head)
@@ -353,6 +395,10 @@ void vyhladanieHercovVoFilmoch(FILM *head)
         hladany_film1->herci = hladany_film1->herci->dalsi_herec;
     }
     
+    herci = vymazHercov(herci);
+    hladany_film1 = vymazNtyFilm(hladany_film1, 1);
+    hladany_film2 = vymazNtyFilm(hladany_film2, 1);
+    
 }
 
 int main(int argc, const char * argv[]) {
@@ -378,6 +424,8 @@ int main(int argc, const char * argv[]) {
             filmy = vymazFilmy(filmy);
             exit(0);
         }
+        else if (!strcmp(handler, "rok"))
+            rok(filmy);
         else
             printf("Neznamy prikaz.\n");
     }
