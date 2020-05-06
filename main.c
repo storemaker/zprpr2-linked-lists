@@ -73,13 +73,13 @@ HEREC *pridajHerca(HEREC *head, char krstne_meno[101], char priezvisko[101], int
 
 void vypis(FILM *head)
 {
-    HEREC *herci = NULL;
-    
     if (head == NULL) {
         printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
         return;
     }
     
+    HEREC *herci = NULL;
+
     while (head != NULL)
     {
         herci = head->herci;
@@ -196,13 +196,13 @@ void nacitaj(FILM **filmy)
 
 void vypisFilmovPodlaHerca(FILM *head)
 {
-    char meno_herca[101], priezvisko_herca[101];
-    HEREC *herci = malloc(sizeof(HEREC));
-    
     if (head == NULL) {
         printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
         return;
     }
+    
+    char meno_herca[101], priezvisko_herca[101];
+    HEREC *herci = malloc(sizeof(HEREC));
     
     scanf("%100s %100s", meno_herca, priezvisko_herca);
 
@@ -222,17 +222,22 @@ void vypisFilmovPodlaHerca(FILM *head)
     
 }
 
-void vyhladanieHercovVoFilmoch(FILM *head, char string_hladany_film1[101], char string_hladany_film2[101])
+void vyhladanieHercovVoFilmoch(FILM *head)
 {
-    FILM *hladany_film1 = malloc(sizeof(FILM)), *hladany_film2 = malloc(sizeof(FILM));
-    HEREC *herci = NULL;
-    int pocet_najdenych_filmov = 0;
-    //char string_hladany_film1[101];//, string_hladany_film2[101];
-    
     if (head == NULL) {
         printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
         return;
     }
+    
+    FILM *hladany_film1 = malloc(sizeof(FILM)), *hladany_film2 = malloc(sizeof(FILM));
+    HEREC *herci = NULL;
+    int pocet_najdenych_filmov = 0;
+    char string_hladany_film1[101], string_hladany_film2[101], garbage;
+    
+    scanf("%c", &garbage);
+    scanf("%100[^\n]s", string_hladany_film1);
+    scanf("%c", &garbage);
+    scanf("%100[^\n]s", string_hladany_film2);
     
     while (head != NULL)
     {
@@ -262,16 +267,13 @@ void vyhladanieHercovVoFilmoch(FILM *head, char string_hladany_film1[101], char 
     {
         herci = hladany_film2->herci;
         
-        //printf("%s %s\n", hladany_film1->herci->meno_herca.krstne_meno, temporary->herci->meno_herca.krstne_meno);
-        
         while (herci != NULL)
         {
-            //printf("porovnavam %s %s s %s %s\n", hladany_film1->herci->meno_herca.krstne_meno, hladany_film1->herci->meno_herca.priezvisko, herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko);
             if(!strcmp(hladany_film1->herci->meno_herca.krstne_meno, herci->meno_herca.krstne_meno) && !strcmp(hladany_film1->herci->meno_herca.priezvisko, herci->meno_herca.priezvisko))
                 printf("%s %s (%d)\n", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
             herci = herci->dalsi_herec;
         }
-       // herci = NULL;
+        
         hladany_film1->herci = hladany_film1->herci->dalsi_herec;
     }
     
@@ -280,7 +282,7 @@ void vyhladanieHercovVoFilmoch(FILM *head, char string_hladany_film1[101], char 
 int main(int argc, const char * argv[]) {
     
     FILM *filmy = NULL;
-    char handler[101], hladany_film1[101] = "San Anderas", hladany_film2[101] = "Mrakodrap";
+    char handler[101];//, hladany_film1[101] = "San Anderas", hladany_film2[101] = "Mrakodrap";
     
     while(scanf("%100s", handler) == 1)
     {
@@ -293,7 +295,7 @@ int main(int argc, const char * argv[]) {
         else if (!strcmp(handler, "filmy"))
             vypisFilmovPodlaHerca(filmy);
         else if (!strcmp(handler, "herci"))
-            vyhladanieHercovVoFilmoch(filmy, hladany_film1, hladany_film2);
+            vyhladanieHercovVoFilmoch(filmy);
         else
             printf("Neznamy prikaz.\n");
     }
