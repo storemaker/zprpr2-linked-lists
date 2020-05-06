@@ -91,60 +91,26 @@ void vypis(FILM *head) {
 FILM *pridaj(FILM *filmy)
 {
     char c, meno_herca[101], priezvisko_herca[101], nazov_filmu[101], meno_rezisera[101], priezvisko_rezisera[101];
-    int read_mode = 1, pocet_filmov = 0, pocet_opakovani = 0, rok_narodenia, rok_vyroby = 0;
+    int read_mode = 1, pocet_filmov = 0, pocet_opakovani = 0, rok_narodenia, rok_vyroby = 0, pocet_riadkov = 1;
     HEREC *herci = NULL;
     
-    while ((c = getc(stdin)) != '*')
+    scanf("%100[^\n]s", nazov_filmu);
+    scanf("%4d", &rok_vyroby);
+    scanf("%100s %100s", meno_rezisera, priezvisko_rezisera);
+    
+    while(1)
     {
-        // getc vo while posunie pointer na druhy znak v subore
-        // a potom fscanf nenacita prvy znak v subore, toto je
-        // fix pre tuto situaciu
-        pocet_opakovani++;
-        if(pocet_filmov == 0 && pocet_opakovani == 1)
-            nazov_filmu[0] = ungetc(c, stdin);
+        scanf("%100s", meno_herca);
+        if(meno_herca[0] == '*')
+            break;
+        scanf("%100s", priezvisko_herca);
+        scanf("%4d", &rok_narodenia);
         
-        // rok vyroby
-        if(isnewline(c) && isdigit(fpeek(stdin))) {
-            read_mode = 2;
-        }
-        // reziser a novy film
-        else if (isnewline(c) && isalpha(fpeek(stdin))) {
-            // reziser
-            if (read_mode == 2)
-                read_mode = 3;
-            // novy film
-            else if (read_mode == 4) {
-                pocet_filmov++;
-                read_mode = 1;
-                filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-                herci = NULL;
-            }
-        }
-        // herci
-        else if (isnewline(c) && !isalpha(fpeek(stdin)) && fpeek(stdin) != EOF) {
-            if (read_mode == 3 || read_mode == 4)
-                read_mode = 4;
-
-        }
-        // posledny film na pridanie
-        else if (fpeek(stdin) == '*') {
-            filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-        }
+        herci = pridajHerca(herci, meno_herca, priezvisko_herca, rok_narodenia);
         
-        if (read_mode == 1) {
-            scanf("%100[^\n]s", nazov_filmu);
-        } else if (read_mode == 2) {
-            scanf("%d", &rok_vyroby);
-        } else if (read_mode == 3) {
-            scanf("%100s %100s", meno_rezisera, priezvisko_rezisera);
-        } else if (read_mode == 4) {
-            scanf("%*c %s %s %d", meno_herca, priezvisko_herca, &rok_narodenia);
-            
-            // hotfix, aby sa posledny herec nepridal 2x
-            if(fpeek(stdin) != EOF)
-                herci = pridajHerca(herci, meno_herca, priezvisko_herca, rok_narodenia);
-        }
     }
+    
+    return filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
 }
 
 void nacitaj(FILM **filmy)
@@ -202,11 +168,11 @@ void nacitaj(FILM **filmy)
         if (read_mode == 1) {
             fscanf(subor, "%100[^\n]s", nazov_filmu);
         } else if (read_mode == 2) {
-            fscanf(subor, "%d", &rok_vyroby);
+            fscanf(subor, "%4d", &rok_vyroby);
         } else if (read_mode == 3) {
             fscanf(subor, "%100s %100s", meno_rezisera, priezvisko_rezisera);
         } else if (read_mode == 4) {
-            fscanf(subor, "%*c %s %s %d", meno_herca, priezvisko_herca, &rok_narodenia);
+            fscanf(subor, "%*c %s %s %4d", meno_herca, priezvisko_herca, &rok_narodenia);
             
             // hotfix, aby sa posledny herec nepridal 2x
             if(fpeek(subor) != EOF)
@@ -221,11 +187,17 @@ void nacitaj(FILM **filmy)
     }
 }
 
+void filmy(FILM *filmy, char meno_herca[100], char priezvisko_herca[100])
+{
+    
+}
+
 int main(int argc, const char * argv[]) {
     
     FILM *filmy = NULL;
     
     nacitaj(&filmy);
+    pridaj(filmy);
     vypis(filmy);
     
     return 0;
