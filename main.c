@@ -121,6 +121,68 @@ FILM *pridaj(FILM *filmy)
     return filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
 }
 
+HEREC *vymazHercov(HEREC *head)
+{
+    HEREC *temp = head;
+    HEREC *tail;
+
+    while (temp != NULL)
+    {
+        tail = temp->dalsi_herec;
+        free(temp);
+        temp = tail;
+    }
+    return NULL;
+}
+
+FILM *vymazNtyFilm(FILM *head, int n)
+{
+    FILM *temp1 = head, *temp2 = head;
+    
+    if (n == 1) {
+        head->herci = vymazHercov(temp1->herci);
+        head = temp1->dalsi_film;
+        free(temp1);
+        return head;
+    }
+    
+    for (int i = 0; i < n-2; i++)
+        temp1 = temp1->dalsi_film;
+    
+    temp2 = temp1->dalsi_film;
+    temp2->herci = vymazHercov(temp2->herci);
+    head->dalsi_film = temp2->dalsi_film;
+    free(temp2);
+    
+    return head;
+}
+
+FILM *vymazFilm(FILM *head)
+{
+    if (head == NULL) {
+        printf("Nie je nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\", \"pridaj\" alebo vsetky filmy boli vymazane.\n");
+        return head;
+    }
+    
+    char nazov_filmu[101], garbage;
+    FILM *temporary = head;
+    int counter = 1;
+    
+    scanf("%c", &garbage);
+    scanf("%100[^\n]s", nazov_filmu);
+    
+    while (temporary != NULL)
+    {
+        if(strcmp(temporary->nazov_filmu, nazov_filmu) == 0)
+            break;
+        temporary = temporary->dalsi_film;
+        counter++;
+    }
+    
+    head = vymazNtyFilm(head, counter);
+    return head;
+}
+
 void nacitaj(FILM **filmy)
 {
     HEREC *herci = NULL;
@@ -209,17 +271,30 @@ void vypisFilmovPodlaHerca(FILM *head)
     while (head != NULL)
     {
         herci = head->herci;
-        
         while (head->herci != NULL)
         {
             if(strcmp(herci->meno_herca.krstne_meno, meno_herca) == 0 && strcmp(herci->meno_herca.priezvisko, priezvisko_herca) == 0)
                 printf("%s (%d)\n", head->nazov_filmu, head->rok_vyroby);
             herci = herci->dalsi_herec;
         }
-        
         head = head->dalsi_film;
     }
     
+}
+
+FILM *vymazFilmy(FILM *head)
+{
+    FILM *temp = head;
+    FILM *tail;
+
+    while (temp != NULL)
+    {
+        tail = temp->dalsi_film;
+        temp->herci = vymazHercov(temp->herci);
+        free(temp);
+        temp = tail;
+    }
+    return NULL;
 }
 
 void vyhladanieHercovVoFilmoch(FILM *head)
@@ -234,6 +309,10 @@ void vyhladanieHercovVoFilmoch(FILM *head)
     int pocet_najdenych_filmov = 0;
     char string_hladany_film1[101], string_hladany_film2[101], garbage;
     
+    // po vstupe do funkcie je v stdin stale newline znak, co znamena,
+    // ze s mojim aktualnym riesenim scanf("%100[^\n]s") by tieto scanf
+    // nic nenacitali, preto nacitam newline znak do premennej, cim
+    // "vymazem" newline znaky zo stdin
     scanf("%c", &garbage);
     scanf("%100[^\n]s", string_hladany_film1);
     scanf("%c", &garbage);
@@ -259,21 +338,18 @@ void vyhladanieHercovVoFilmoch(FILM *head)
                 hladany_film2->dalsi_film = NULL;
             }
         }
-        
         head = head->dalsi_film;
     }
     
     while (hladany_film1->herci != NULL)
     {
         herci = hladany_film2->herci;
-        
         while (herci != NULL)
         {
             if(!strcmp(hladany_film1->herci->meno_herca.krstne_meno, herci->meno_herca.krstne_meno) && !strcmp(hladany_film1->herci->meno_herca.priezvisko, herci->meno_herca.priezvisko))
                 printf("%s %s (%d)\n", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
             herci = herci->dalsi_herec;
         }
-        
         hladany_film1->herci = hladany_film1->herci->dalsi_herec;
     }
     
@@ -282,7 +358,7 @@ void vyhladanieHercovVoFilmoch(FILM *head)
 int main(int argc, const char * argv[]) {
     
     FILM *filmy = NULL;
-    char handler[101];//, hladany_film1[101] = "San Anderas", hladany_film2[101] = "Mrakodrap";
+    char handler[101];
     
     while(scanf("%100s", handler) == 1)
     {
@@ -296,6 +372,12 @@ int main(int argc, const char * argv[]) {
             vypisFilmovPodlaHerca(filmy);
         else if (!strcmp(handler, "herci"))
             vyhladanieHercovVoFilmoch(filmy);
+        else if (!strcmp(handler, "vymaz"))
+            filmy = vymazFilm(filmy);
+        else if (!strcmp(handler, "koniec")) {
+            filmy = vymazFilmy(filmy);
+            exit(0);
+        }
         else
             printf("Neznamy prikaz.\n");
     }
