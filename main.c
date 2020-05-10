@@ -1,17 +1,10 @@
-//
-//  main.c
-//  zprpr2 projekt2
-//
-//  Created by Jakub Taraba on 04/05/2020.
-//  Copyright © 2020 Jakub Taraba. All rights reserved.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include "helpers.h"
 #define FILE_PATH "/Users/storemaker/Projects/zprpr2 projekt2/zprpr2 projekt2/filmy.txt"
+#define RESULTS_NOT_FOUND_MSG "Zoznam filmov neobsahuje ziadne filmy.\nSkuste nacitat filmy zo suboru alebo pomocou funkcie 'pridaj'."
 
 typedef struct {
     char krstne_meno[101];
@@ -46,13 +39,13 @@ FILM *pridajFilm(FILM *head, HEREC *herci, char nazov_filmu[101], char meno_rezi
     temporary->herci = herci;
     temporary->dalsi_film = NULL;
     
+    // ak nebol pridany este ziaden film
     if (head == NULL) return temporary;
     
     while (tail->dalsi_film != NULL)
         tail = tail->dalsi_film;
-    tail->dalsi_film = temporary;
     
-    //temporary->herci = vymazHercov(temporary->herci);
+    tail->dalsi_film = temporary;
     
     return head;
 }
@@ -66,10 +59,12 @@ HEREC *pridajHerca(HEREC *head, char krstne_meno[101], char priezvisko[101], int
     temporary->rok_narodenia = rok_narodenia;
     temporary->dalsi_herec = NULL;
     
+    // ak nebol pridany este ziaden herec
     if (head == NULL) return temporary;
     
     while (tail->dalsi_herec != NULL)
         tail = tail->dalsi_herec;
+    
     tail->dalsi_herec = temporary;
     
     return head;
@@ -92,7 +87,7 @@ HEREC *vymazHercov(HEREC *head)
 void vypis(FILM *head)
 {
     if (head == NULL) {
-        printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
+        printf(RESULTS_NOT_FOUND_MSG);
         return;
     }
     
@@ -104,17 +99,17 @@ void vypis(FILM *head)
         printf("%s (%d) %s %s\n\tHraju: ", head->nazov_filmu, head->rok_vyroby, head->meno_rezisera.krstne_meno, head->meno_rezisera.priezvisko);
         while (herci != NULL)
         {
+            // pokial existuje este dalsi herec, vypisem ciarku
             if(herci->dalsi_herec != NULL)
                 printf("%s %s (%d), ", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
             else
                 printf("%s %s (%d)", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
+            
             herci = herci->dalsi_herec;
         }
         head = head->dalsi_film;
         printf("\n");
     }
-    
-    herci = vymazHercov(herci);
 }
 
 FILM *pridaj(FILM *filmy)
@@ -148,8 +143,9 @@ FILM *pridaj(FILM *filmy)
 
 FILM *vymazNtyFilm(FILM *head, int n)
 {
-    FILM *temp1 = head, *temp2 = head;
+    FILM *temp1 = head;
     
+    // pokial chcem vymazat prvy film
     if (n == 1) {
         head->herci = vymazHercov(temp1->herci);
         head = temp1->dalsi_film;
@@ -157,12 +153,20 @@ FILM *vymazNtyFilm(FILM *head, int n)
         return head;
     }
     
+    FILM *temp2 = head;
+    
+    // dostanem sa pred film, ktory chcem vymazat
     for (int i = 0; i < n-2; i++)
         temp1 = temp1->dalsi_film;
     
+    // temp2 je film, ktory chcem vymazat
     temp2 = temp1->dalsi_film;
+    // dealokujem hercov z filmu, ktory chcem vymazat
     temp2->herci = vymazHercov(temp2->herci);
+    // zmenim pointer na film, ktory nasleduje po vymazanom filme
     head->dalsi_film = temp2->dalsi_film;
+    
+    // dealokujem pointer
     free(temp2);
     
     return head;
@@ -172,7 +176,7 @@ FILM *vymazFilm(FILM *head)
 {
     // nie su nacitane ziadne filmy
     if (head == NULL) {
-        printf("Nie je nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\", \"pridaj\" alebo vsetky filmy boli vymazane.\n");
+        printf(RESULTS_NOT_FOUND_MSG);
         return head;
     }
     
@@ -217,6 +221,9 @@ void nacitaj(FILM **filmy)
     {
         /* readmodes: 1 - nazov filmu, 2 - rok vyroby filmu, 3 - meno rezisera filmu, 4 - herci, ktori hraju vo filme */
         
+        // funkcia fpeek sa "pozera" na dalsi charakter v subore,
+        // tak viem aky dalsi udaj ma nasledovat
+        
         // getc vo while posunie pointer na druhy znak v subore
         // a potom fscanf nenacita prvy znak v subore, toto je
         // fix pre tuto situaciu
@@ -230,15 +237,19 @@ void nacitaj(FILM **filmy)
         }
         // reziser a novy film
         else if (isnewline(c) && isalpha(fpeek(subor))) {
-            // reziser
+            // reziser, ak viem, ze som predtym nacitaval rok vyroby,
+            // viem, ze dalsi nacitany udaj musi byt meno rezisera
             if (read_mode == 2)
                 read_mode = 3;
-            // novy film
+            // nacitanie noveho filmu
             else if (read_mode == 4) {
                 pocet_filmov++;
                 read_mode = 1;
+                // viem, ze mam nacitavat novy film, pridam posledny nacitany film
+                // do zoznamu filmov
                 *filmy = pridajFilm(*filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-                herci = vymazHercov(herci);
+                // vymazanie zoznamu hercov pre novy film
+                herci = NULL;
             }
         }
         // herci
@@ -252,13 +263,17 @@ void nacitaj(FILM **filmy)
             *filmy = pridajFilm(*filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
         }
         
+        // podla tzv. read modes viem aky udaj mam nacitavat
         if (read_mode == 1) {
+            // [^\n] nacitavanie vsetkych znakov az po newline znak,
+            // pretoze niektore filmy v subore filmy.txt maju medzery
             fscanf(subor, "%100[^\n]s", nazov_filmu);
         } else if (read_mode == 2) {
             fscanf(subor, "%4d", &rok_vyroby);
         } else if (read_mode == 3) {
             fscanf(subor, "%100s %100s", meno_rezisera, priezvisko_rezisera);
         } else if (read_mode == 4) {
+            // %*c pre ignorovanie *
             fscanf(subor, "%*c %s %s %4d", meno_herca, priezvisko_herca, &rok_narodenia);
             // hotfix, aby sa posledny herec nepridal 2x
             if (fpeek(subor) != EOF)
@@ -276,20 +291,26 @@ void nacitaj(FILM **filmy)
 void vypisFilmovPodlaHerca(FILM *head)
 {
     if (head == NULL) {
-        printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
+        printf(RESULTS_NOT_FOUND_MSG);
         return;
     }
     
-    char meno_herca[101], priezvisko_herca[101];
+    char meno_herca[101], priezvisko_herca[101], garbage;
     HEREC *herci = malloc(sizeof(HEREC));
     
+    // nacitanie hladaneho herca
+    scanf("%c", &garbage);
     scanf("%100s %100s", meno_herca, priezvisko_herca);
-
+    
+    // prechadzanie filmami
     while (head != NULL)
     {
         herci = head->herci;
-        while (head->herci != NULL)
+        
+        // prechadzanie hercami aktualneho filmu
+        while (herci != NULL)
         {
+            // ak je hladany herec najdeny, vypise sa v akom filme hraje
             if(strcmp(herci->meno_herca.krstne_meno, meno_herca) == 0 && strcmp(herci->meno_herca.priezvisko, priezvisko_herca) == 0)
                 printf("%s (%d)\n", head->nazov_filmu, head->rok_vyroby);
             herci = herci->dalsi_herec;
@@ -297,10 +318,12 @@ void vypisFilmovPodlaHerca(FILM *head)
         head = head->dalsi_film;
     }
     
+    // vymazanie alokovaneho pola hercov z heapu
     herci = vymazHercov(herci);
     
 }
 
+// funkcia na vymazanie celeho zoznamu filmov
 FILM *vymazFilmy(FILM *head)
 {
     FILM *temp = head;
@@ -309,6 +332,7 @@ FILM *vymazFilmy(FILM *head)
     while (temp != NULL)
     {
         tail = temp->dalsi_film;
+        // vymazanie zoznamu hercov pre aktualny film
         temp->herci = vymazHercov(temp->herci);
         free(temp);
         temp = tail;
@@ -316,24 +340,36 @@ FILM *vymazFilmy(FILM *head)
     return NULL;
 }
 
+// nefunguje sortovanie podla abecedy a roku, vsetko ostatne pri tomto prikaze funguje
 void rok(FILM *head)
 {
+    if (head == NULL) {
+        printf(RESULTS_NOT_FOUND_MSG);
+        return;
+    }
+    
     HEREC *herci = NULL, *temporary = NULL;
     int duplicate = 0;
     
+    // prechadzanie vsetkymi filmami
     while (head != NULL)
     {
+        // prechadzanie vsetkymi hercami aktualneho prechadzaneho filmu
         while (head->herci != NULL)
         {
+            // pomocna premenna pre zoznam hercov
             temporary = herci;
             duplicate = 0;
             
+            // pomocny loop na zistenie, ci dany herec je uz v zozname hercov, ktory
+            // sa ma vytvorit, vypisat a vymazat
             while (temporary != NULL) {
                 if(!strcmp(head->herci->meno_herca.krstne_meno, temporary->meno_herca.krstne_meno) && !strcmp(head->herci->meno_herca.priezvisko, temporary->meno_herca.priezvisko))
                     duplicate = 1;
                 temporary = temporary->dalsi_herec;
             }
             
+            // ak bol aktualny herec najdeny v novom zozname hercov, nebude pridany
             if(!duplicate)
                 herci = pridajHerca(herci, head->herci->meno_herca.krstne_meno, head->herci->meno_herca.priezvisko, head->herci->rok_narodenia);
             head->herci = head->herci->dalsi_herec;
@@ -341,6 +377,7 @@ void rok(FILM *head)
         head = head->dalsi_film;
     }
     
+    // vypis vsetkych najdenych hercov
     while (herci != NULL)
     {
         if(herci->dalsi_herec != NULL)
@@ -350,14 +387,13 @@ void rok(FILM *head)
         herci = herci->dalsi_herec;
     }
     
-    herci = vymazHercov(herci);
-    
+    printf("\n");
 }
 
 void vyhladanieHercovVoFilmoch(FILM *head)
 {
     if (head == NULL) {
-        printf("Nebol nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\" alebo \"pridaj\"\n");
+        printf(RESULTS_NOT_FOUND_MSG);
         return;
     }
     
@@ -369,17 +405,25 @@ void vyhladanieHercovVoFilmoch(FILM *head)
     // po vstupe do funkcie je v stdin stale newline znak, co znamena,
     // ze s mojim aktualnym riesenim scanf("%100[^\n]s") by tieto scanf
     // nic nenacitali, preto nacitam newline znak do premennej, cim
-    // "vymazem" newline znaky zo stdin
+    // "vymazem" newline znak zo stdin
     scanf("%c", &garbage);
     scanf("%100[^\n]s", string_hladany_film1);
     scanf("%c", &garbage);
     scanf("%100[^\n]s", string_hladany_film2);
     
+    
+    // prechadzanie zoznamom filmov
     while (head != NULL)
     {
+        // ak sa nazov filmu rovna prvemu alebo druhemu nazvu hladaneho filmu
         if (!strcmp(head->nazov_filmu, string_hladany_film1) || !strcmp(head->nazov_filmu, string_hladany_film2)) {
             pocet_najdenych_filmov++;
+            
+            // pocet najdenych filmov, kvoli tomu, ze neviem v akom poradi su hladane
+            // filmy v zozname, preto potrebujem pomocnu premennu, aby som vedel
+            // vzdy spravne priradit filmy do pomocnych zoznamov
             if (pocet_najdenych_filmov == 1) {
+                // kopirovanie filmu do pomocnej premennej
                 strcpy(hladany_film1->nazov_filmu, head->nazov_filmu);
                 strcpy(hladany_film1->meno_rezisera.krstne_meno, head->meno_rezisera.krstne_meno);
                 strcpy(hladany_film1->meno_rezisera.priezvisko, head->meno_rezisera.priezvisko);
@@ -398,22 +442,24 @@ void vyhladanieHercovVoFilmoch(FILM *head)
         head = head->dalsi_film;
     }
     
+    // vyhladavanie funguje tak, ze pre kazdeho jedneho herca z filmu 1
+    // prechadzam vsetkymi hercami z filmu 2 a porovnam, ci sa meno rovna
+    // ak sa mena rovnaju, vypisem ho
     while (hladany_film1->herci != NULL)
     {
+        // pomocna premenna pre hercov z filmu 2
         herci = hladany_film2->herci;
+        
+        // prechadzanie vsetkymi hercami z filmu 2 na zaklade hercov z filmu 1
         while (herci != NULL)
         {
             if(!strcmp(hladany_film1->herci->meno_herca.krstne_meno, herci->meno_herca.krstne_meno) && !strcmp(hladany_film1->herci->meno_herca.priezvisko, herci->meno_herca.priezvisko))
                 printf("%s %s (%d)\n", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
             herci = herci->dalsi_herec;
         }
+        // prechadzanie hercami z filmu 1
         hladany_film1->herci = hladany_film1->herci->dalsi_herec;
     }
-    
-    herci = vymazHercov(herci);
-    hladany_film1 = vymazNtyFilm(hladany_film1, 1);
-    hladany_film2 = vymazNtyFilm(hladany_film2, 1);
-    
 }
 
 int main(int argc, const char * argv[]) {
@@ -421,6 +467,7 @@ int main(int argc, const char * argv[]) {
     FILM *filmy = NULL;
     char handler[101];
     
+    // handler pre prikazy
     while(scanf("%100s", handler) == 1)
     {
         if (!strcmp(handler, "nacitaj"))
