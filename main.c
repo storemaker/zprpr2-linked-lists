@@ -32,6 +32,8 @@ typedef struct film {
     struct film *dalsi_film;
 } FILM;
 
+
+// funkcia na pridanie filmu do zoznamu vsetkych filmov
 FILM *pridajFilm(FILM *head, HEREC *herci, char nazov_filmu[101], char meno_rezisera[101], char priezvisko_rezisera[101], int rok_vyroby)
 {
     FILM *temporary = malloc(sizeof(FILM));
@@ -49,6 +51,8 @@ FILM *pridajFilm(FILM *head, HEREC *herci, char nazov_filmu[101], char meno_rezi
     while (tail->dalsi_film != NULL)
         tail = tail->dalsi_film;
     tail->dalsi_film = temporary;
+    
+    //temporary->herci = vymazHercov(temporary->herci);
     
     return head;
 }
@@ -115,10 +119,15 @@ void vypis(FILM *head)
 
 FILM *pridaj(FILM *filmy)
 {
-    char meno_herca[101], priezvisko_herca[101], nazov_filmu[101], meno_rezisera[101], priezvisko_rezisera[101];
+    char meno_herca[101], priezvisko_herca[101], nazov_filmu[101], meno_rezisera[101], priezvisko_rezisera[101], garbage;
     int rok_narodenia, rok_vyroby = 0;
     HEREC *herci = NULL;
     
+    // premenna "garbage" na nacitanie znaku noveho riadku
+    scanf("%c", &garbage);
+    
+    // nacitavanie udajov o filme, prosim, nove filmy pridavajte
+    // manualnym pisanim, nie copy-paste, inak nacitavanie spravne nefunguje
     scanf("%100[^\n]s", nazov_filmu);
     scanf("%4d", &rok_vyroby);
     scanf("%100s %100s", meno_rezisera, priezvisko_rezisera);
@@ -161,6 +170,7 @@ FILM *vymazNtyFilm(FILM *head, int n)
 
 FILM *vymazFilm(FILM *head)
 {
+    // nie su nacitane ziadne filmy
     if (head == NULL) {
         printf("Nie je nacitany ziadny film, prosim, skontrolujte, ci boli pouzite prikazy \"nacitaj\", \"pridaj\" alebo vsetky filmy boli vymazane.\n");
         return head;
@@ -170,17 +180,22 @@ FILM *vymazFilm(FILM *head)
     FILM *temporary = head;
     int counter = 1;
     
+    // nacitanie, ktory film sa ma vymazat
     scanf("%c", &garbage);
     scanf("%100[^\n]s", nazov_filmu);
     
+    // zistim poradie filmu, ktory sa ma vymazat
     while (temporary != NULL)
     {
+        // pokial sa tento check rovna 0, nasiel som poradie filmu,
+        // ktory sa ma vymazat
         if(strcmp(temporary->nazov_filmu, nazov_filmu) == 0)
             break;
         temporary = temporary->dalsi_film;
         counter++;
     }
     
+    // vymazanie korektneho filmu
     head = vymazNtyFilm(head, counter);
     return head;
 }
@@ -223,7 +238,7 @@ void nacitaj(FILM **filmy)
                 pocet_filmov++;
                 read_mode = 1;
                 *filmy = pridajFilm(*filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-                herci = NULL;
+                herci = vymazHercov(herci);
             }
         }
         // herci
