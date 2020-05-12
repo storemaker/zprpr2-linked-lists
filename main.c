@@ -1,496 +1,366 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
-#include "helpers.h"
-#define FILE_PATH "/Users/storemaker/Projects/zprpr2 projekt2/zprpr2 projekt2/filmy.txt"
-#define RESULTS_NOT_FOUND_MSG "Zoznam filmov neobsahuje ziadne filmy.\nSkuste nacitat filmy zo suboru alebo pomocou funkcie 'pridaj'."
+/*Code wrote by Matej Volansky 2020*/
+#define FILE_N "filmy.txt"
+#define MAX_LEN 101
+/*.........CHYBOVE HLASKY.........*/
+#define NOT_LOADED "Zoznam nie je nacitany.\n" 
+#define WRONG_INPUT "Zle zadany vstup.\n"
+#define NOT_FOUND "Dany vstup nebol najdeny.\n"
 
-typedef struct {
-    char krstne_meno[101];
-    char priezvisko[101];
+typedef struct meno {
+	char k_meno[MAX_LEN];
+	char priezvisko[MAX_LEN];
 } MENO;
 
 typedef struct herec {
-    MENO meno_herca;
-    int rok_narodenia;
-    struct herec *dalsi_herec;
+	MENO m_herca;
+	int rok_n;
+	struct herec* next;
 } HEREC;
 
 typedef struct film {
-    char nazov_filmu[101];
-    int rok_vyroby;
-    MENO meno_rezisera;
-    HEREC *herci;
-    struct film *dalsi_film;
+	char nazov[MAX_LEN];
+	int rok_v;
+	MENO m_rezisera;
+	HEREC* zoznam_h;
+	struct film* next;
 } FILM;
 
-
-// funkcia na pridanie filmu do zoznamu vsetkych filmov
-FILM *pridajFilm(FILM *head, HEREC *herci, char nazov_filmu[101], char meno_rezisera[101], char priezvisko_rezisera[101], int rok_vyroby)
-{
-    FILM *temporary = malloc(sizeof(FILM));
-    FILM *tail = head;
-    
-    strcpy(temporary->nazov_filmu, nazov_filmu);
-    strcpy(temporary->meno_rezisera.krstne_meno, meno_rezisera);
-    strcpy(temporary->meno_rezisera.priezvisko, priezvisko_rezisera);
-    temporary->rok_vyroby = rok_vyroby;
-    temporary->herci = herci;
-    temporary->dalsi_film = NULL;
-    
-    // ak nebol pridany este ziaden film
-    if (head == NULL) return temporary;
-    
-    while (tail->dalsi_film != NULL)
-        tail = tail->dalsi_film;
-    
-    tail->dalsi_film = temporary;
-    
-    return head;
+/*POMOCNA FUNKCIA:.........UVOLNENIE PAMATE CELEHO ZOZNAMU.........*/
+FILM* unbound(FILM* start) {
+	FILM* p_start = NULL, *act = start;
+	while (act != NULL) { // Pre kazdy zoznam filmov
+		HEREC* p_zoznam = NULL;
+		while (act->zoznam_h!= NULL) {	// Pre kazdy zoznam hercov
+			p_zoznam = act->zoznam_h;
+			act->zoznam_h = act->zoznam_h->next;
+			free(p_zoznam);
+		}
+		p_start = act;
+		act = act->next;
+		free(p_start);
+	}
+	return NULL;
 }
 
-HEREC *pridajHerca(HEREC *head, char krstne_meno[101], char priezvisko[101], int rok_narodenia)
-{
-    HEREC *temporary = malloc(sizeof(HEREC));
-    HEREC *tail = head;
-    strcpy(temporary->meno_herca.krstne_meno, krstne_meno);
-    strcpy(temporary->meno_herca.priezvisko, priezvisko);
-    temporary->rok_narodenia = rok_narodenia;
-    temporary->dalsi_herec = NULL;
-    
-    // ak nebol pridany este ziaden herec
-    if (head == NULL) return temporary;
-    
-    while (tail->dalsi_herec != NULL)
-        tail = tail->dalsi_herec;
-    
-    tail->dalsi_herec = temporary;
-    
-    return head;
+/*POMOCNA FUNKCIA:.........PRIDANIE FILMU DO ZOZNAMU.........*/
+FILM* addMovie(FILM* start, FILM* add) {
+	FILM* act = start;
+	if (start == NULL) { start = add; return start; } // Ak v zozname este sa nenachadza ziadny zaznam, pridame film na zaciatok a vratime
+	while (act->next != NULL) // Ak v zozname uz zaznamy su, dostaneme sa nakoniec
+		act = act->next;
+	act->next = add; // A ulozime tam film ktory chceme pridat
+	return start;
 }
 
-HEREC *vymazHercov(HEREC *head)
-{
-    HEREC *temp = head;
-    HEREC *tail;
-
-    while (temp != NULL)
-    {
-        tail = temp->dalsi_herec;
-        free(temp);
-        temp = tail;
-    }
-    return NULL;
+/*POMOCNA FUNKCIA:.........PRIDANIE HERCA DO ZOZNAMU.........*/
+HEREC* addActor(HEREC* start, HEREC* add) {
+	HEREC* act = start;
+	if (start == NULL) { start = add; return start; } // Rovnako ako pri predoslej pridavani filmov
+	while (act->next != NULL)
+		act = act->next;
+	act->next = add;
+	return start;
 }
 
-void vypis(FILM *head)
-{
-    if (head == NULL) {
-        printf(RESULTS_NOT_FOUND_MSG);
-        return;
-    }
-    
-    HEREC *herci = NULL;
+/*HLAVNA FUNCKIA:...........NACITANIE ZOZNAMU ZO SUBORU........*/
+FILM* load(FILM* start) {
+	FILE* f;
+	int c;
+	if ((f = fopen(FILE_N, "r")) == NULL) {
+		printf("Nepodarilo sa otvorit subor\n");
+		return NULL;
+	}
 
-    while (head != NULL)
-    {
-        herci = head->herci;
-        printf("%s (%d) %s %s\n\tHraju: ", head->nazov_filmu, head->rok_vyroby, head->meno_rezisera.krstne_meno, head->meno_rezisera.priezvisko);
-        while (herci != NULL)
-        {
-            // pokial existuje este dalsi herec, vypisem ciarku
-            if(herci->dalsi_herec != NULL)
-                printf("%s %s (%d), ", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
-            else
-                printf("%s %s (%d)", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
-            
-            herci = herci->dalsi_herec;
-        }
-        head = head->dalsi_film;
-        printf("\n");
-    }
+	start = unbound(start);
+
+	while ((c = getc(f)) != EOF) {
+		FILM* add = (FILM*)malloc(sizeof(FILM));
+		ungetc(c, f);
+		if (add) {
+			if (fscanf(f, "%100[^\n]", add->nazov) != 0 && fscanf(f, "%d\n%100s %100s\n", &add->rok_v, add->m_rezisera.k_meno, add->m_rezisera.priezvisko) != 0) {
+				HEREC* startA = NULL;
+				while ((c = getc(f)) == '*' && c != EOF) {
+					add->zoznam_h = (HEREC*)malloc(sizeof(HEREC));
+					if (add->zoznam_h) {
+						if (fscanf(f, "%100s %100s %d\n", add->zoznam_h->m_herca.k_meno, add->zoznam_h->m_herca.priezvisko, &add->zoznam_h->rok_n) != 0);
+						add->zoznam_h->next = NULL;
+						startA = addActor(startA, add->zoznam_h);
+					}
+				}
+				ungetc(c, f);
+				add->next = NULL;
+				add->zoznam_h = startA;
+				start = addMovie(start, add);
+			}
+			else
+				printf(WRONG_INPUT);
+		}
+	}
+
+	if (fclose(f) == EOF) {
+		printf("Nepodarilo sa zatvorit subor.\n");
+		return NULL;
+	}
+	return start;
 }
 
-FILM *pridaj(FILM *filmy)
-{
-    char meno_herca[101], priezvisko_herca[101], nazov_filmu[101], meno_rezisera[101], priezvisko_rezisera[101], garbage;
-    int rok_narodenia, rok_vyroby = 0;
-    HEREC *herci = NULL;
-    
-    // premenna "garbage" na nacitanie znaku noveho riadku
-    scanf("%c", &garbage);
-    
-    // nacitavanie udajov o filme, prosim, nove filmy pridavajte
-    // manualnym pisanim, nie copy-paste, inak nacitavanie spravne nefunguje
-    scanf("%100[^\n]s", nazov_filmu);
-    scanf("%4d", &rok_vyroby);
-    scanf("%100s %100s", meno_rezisera, priezvisko_rezisera);
-    
-    while (1)
-    {
-        scanf("%100s", meno_herca);
-        if(meno_herca[0] == '*')
-            break;
-        scanf("%100s", priezvisko_herca);
-        scanf("%4d", &rok_narodenia);
-        
-        herci = pridajHerca(herci, meno_herca, priezvisko_herca, rok_narodenia);
-    }
-    
-    return filmy = pridajFilm(filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
+/*HLAVNA FUNKCIA:..............VYPIS CELEHO ZOZNAMU............*/
+void output(FILM* start) {
+	if (start == NULL)
+		printf(NOT_LOADED);
+	while (start != NULL) {
+		printf("%s (%d) %s %s\nHraju: ", start->nazov, start->rok_v, start->m_rezisera.k_meno, start->m_rezisera.priezvisko);
+		HEREC* act = start->zoznam_h;
+		while (1) {
+			if (act) {
+				printf("%s %s %d", act->m_herca.k_meno, act->m_herca.priezvisko, act->rok_n);
+				act = act->next;
+			}
+			if (act == NULL)
+				break;
+			else
+				printf(", ");
+		}
+		printf("\n");
+		start = start->next;
+	}
 }
 
-FILM *vymazNtyFilm(FILM *head, int n)
-{
-    FILM *temp1 = head;
-    
-    // pokial chcem vymazat prvy film
-    if (n == 1) {
-        head->herci = vymazHercov(temp1->herci);
-        head = temp1->dalsi_film;
-        free(temp1);
-        return head;
-    }
-    
-    FILM *temp2 = head;
-    
-    // dostanem sa pred film, ktory chcem vymazat
-    for (int i = 0; i < n-2; i++)
-        temp1 = temp1->dalsi_film;
-    
-    // temp2 je film, ktory chcem vymazat
-    temp2 = temp1->dalsi_film;
-    // dealokujem hercov z filmu, ktory chcem vymazat
-    temp2->herci = vymazHercov(temp2->herci);
-    // zmenim pointer na film, ktory nasleduje po vymazanom filme
-    head->dalsi_film = temp2->dalsi_film;
-    
-    // dealokujem pointer
-    free(temp2);
-    
-    return head;
+/*HLAVNA FUNKCIA:...........PRIDANIE FILMU DO ZOZNAMU..........*/
+FILM* addRecord(FILM* start) {
+	int c;
+	FILM* add = (FILM*)calloc(1,sizeof(FILM));
+	if (add) {
+		if (scanf("\n%100[^\n]", add->nazov) != 0 && scanf("%d\n%100s %100s", &add->rok_v, add->m_rezisera.k_meno, add->m_rezisera.priezvisko) != 0) {
+			HEREC* startA = NULL;
+			while ((c = getchar()) != '*') {
+				ungetc(c, stdin);
+				add->zoznam_h = (HEREC*)calloc(1, sizeof(HEREC));
+				if (add->zoznam_h) {
+					if (fscanf(stdin, "%100s %100s %d\n", add->zoznam_h->m_herca.k_meno, add->zoznam_h->m_herca.priezvisko, &add->zoznam_h->rok_n) != 0);
+					add->zoznam_h->next = NULL;
+					startA = addActor(startA, add->zoznam_h);
+				}
+			}
+			add->next = NULL;
+			add->zoznam_h = startA;
+			start = addMovie(start, add);
+		}
+		else
+			printf(WRONG_INPUT);
+	}
+	return start;
 }
 
-FILM *vymazFilm(FILM *head)
-{
-    // nie su nacitane ziadne filmy
-    if (head == NULL) {
-        printf(RESULTS_NOT_FOUND_MSG);
-        return head;
-    }
-    
-    char nazov_filmu[101], garbage;
-    FILM *temporary = head;
-    int counter = 1;
-    
-    // nacitanie, ktory film sa ma vymazat
-    scanf("%c", &garbage);
-    scanf("%100[^\n]s", nazov_filmu);
-    
-    // zistim poradie filmu, ktory sa ma vymazat
-    while (temporary != NULL)
-    {
-        // pokial sa tento check rovna 0, nasiel som poradie filmu,
-        // ktory sa ma vymazat
-        if(strcmp(temporary->nazov_filmu, nazov_filmu) == 0)
-            break;
-        temporary = temporary->dalsi_film;
-        counter++;
-    }
-    
-    // vymazanie korektneho filmu
-    head = vymazNtyFilm(head, counter);
-    return head;
+/*POMOCNA FUNKCIA:...........UVOLNENIE PAMATE PRE JEDEN ZAZNAM..........*/
+FILM* unboundRecord(FILM* record) {
+	FILM* p_record = record;
+	HEREC* p_zoznam = NULL;
+	while (record->zoznam_h != NULL) {
+		p_zoznam = record->zoznam_h;
+		record->zoznam_h = record->zoznam_h->next;
+		free(p_zoznam);
+	}
+	free(p_record);
+	return NULL;
 }
 
-void nacitaj(FILM **filmy)
-{
-    HEREC *herci = NULL;
-    FILE *subor;
-    char c, meno_herca[101], priezvisko_herca[101], nazov_filmu[101], meno_rezisera[101], priezvisko_rezisera[101];
-    int read_mode = 1, pocet_filmov = 0, pocet_opakovani = 0, rok_narodenia, rok_vyroby = 0;
-    
-    // osetrenie otvorenia suboru
-    if ((subor = fopen(FILE_PATH, "r")) == NULL) {
-        printf("Subor filmy.txt sa nepodarilo nacitat.\n");
-        return;
-    }
-
-    while ((c = getc(subor)) != EOF)
-    {
-        /* readmodes: 1 - nazov filmu, 2 - rok vyroby filmu, 3 - meno rezisera filmu, 4 - herci, ktori hraju vo filme */
-        
-        // funkcia fpeek sa "pozera" na dalsi charakter v subore,
-        // tak viem aky dalsi udaj ma nasledovat
-        
-        // getc vo while posunie pointer na druhy znak v subore
-        // a potom fscanf nenacita prvy znak v subore, toto je
-        // fix pre tuto situaciu
-        pocet_opakovani++;
-        if (pocet_filmov == 0 && pocet_opakovani == 1)
-            nazov_filmu[0] = ungetc(c, subor);
-        
-        // rok vyroby
-        if (isnewline(c) && isdigit(fpeek(subor))) {
-            read_mode = 2;
-        }
-        // reziser a novy film
-        else if (isnewline(c) && isalpha(fpeek(subor))) {
-            // reziser, ak viem, ze som predtym nacitaval rok vyroby,
-            // viem, ze dalsi nacitany udaj musi byt meno rezisera
-            if (read_mode == 2)
-                read_mode = 3;
-            // nacitanie noveho filmu
-            else if (read_mode == 4) {
-                pocet_filmov++;
-                read_mode = 1;
-                // viem, ze mam nacitavat novy film, pridam posledny nacitany film
-                // do zoznamu filmov
-                *filmy = pridajFilm(*filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-                // vymazanie zoznamu hercov pre novy film
-                herci = NULL;
-            }
-        }
-        // herci
-        else if (isnewline(c) && !isalpha(fpeek(subor)) && fpeek(subor) != EOF) {
-            if (read_mode == 3 || read_mode == 4)
-                read_mode = 4;
-
-        }
-        // posledny film na pridanie
-        else if (fpeek(subor) == EOF) {
-            *filmy = pridajFilm(*filmy, herci, nazov_filmu, meno_rezisera, priezvisko_rezisera, rok_vyroby);
-        }
-        
-        // podla tzv. read modes viem aky udaj mam nacitavat
-        if (read_mode == 1) {
-            // [^\n] nacitavanie vsetkych znakov az po newline znak,
-            // pretoze niektore filmy v subore filmy.txt maju medzery
-            fscanf(subor, "%100[^\n]s", nazov_filmu);
-        } else if (read_mode == 2) {
-            fscanf(subor, "%4d", &rok_vyroby);
-        } else if (read_mode == 3) {
-            fscanf(subor, "%100s %100s", meno_rezisera, priezvisko_rezisera);
-        } else if (read_mode == 4) {
-            // %*c pre ignorovanie *
-            fscanf(subor, "%*c %s %s %4d", meno_herca, priezvisko_herca, &rok_narodenia);
-            // hotfix, aby sa posledny herec nepridal 2x
-            if (fpeek(subor) != EOF)
-                herci = pridajHerca(herci, meno_herca, priezvisko_herca, rok_narodenia);
-        }
-    }
-    
-    // osetrenie zatvorenia suboru
-    if ((fclose(subor)) == EOF) {
-        printf("Subor filmy.txt sa nepodarilo zatvorit.\n");
-        return;
-    }
+/*HLAVNA FUNKCIA:...........VYMAZANIE DANEHO FILMU ZO ZOZNAMU..........*/
+FILM* removeRecord(FILM* start) {
+	if (start != NULL) {
+		FILM* act = start;
+		char title[MAX_LEN] = { '\0' };
+		if (scanf("\n%100[^\n]", title) != 0) {
+			while (act != NULL) {
+				if (!strcmp(act->nazov, title)) {
+					if (act == start) {
+						FILM* new_start = start->next;
+						start = unboundRecord(start);
+						return new_start;
+					}
+					else  {
+						FILM* temp = start;
+						while (temp->next != act)
+							temp = temp->next;
+						temp->next = act->next == NULL ? NULL : act->next;
+						act = unbound(act);
+						return start;
+					}
+				}
+				act = act->next;
+			}
+			printf(NOT_FOUND);
+			return start;
+		}
+		else printf(WRONG_INPUT);
+	}
+	else printf(NOT_LOADED);
+	return NULL;
 }
 
-void vypisFilmovPodlaHerca(FILM *head)
-{
-    if (head == NULL) {
-        printf(RESULTS_NOT_FOUND_MSG);
-        return;
-    }
-    
-    char meno_herca[101], priezvisko_herca[101], garbage;
-    HEREC *herci = malloc(sizeof(HEREC));
-    
-    // nacitanie hladaneho herca
-    scanf("%c", &garbage);
-    scanf("%100s %100s", meno_herca, priezvisko_herca);
-    
-    // prechadzanie filmami
-    while (head != NULL)
-    {
-        herci = head->herci;
-        
-        // prechadzanie hercami aktualneho filmu
-        while (herci != NULL)
-        {
-            // ak je hladany herec najdeny, vypise sa v akom filme hraje
-            if(strcmp(herci->meno_herca.krstne_meno, meno_herca) == 0 && strcmp(herci->meno_herca.priezvisko, priezvisko_herca) == 0)
-                printf("%s (%d)\n", head->nazov_filmu, head->rok_vyroby);
-            herci = herci->dalsi_herec;
-        }
-        head = head->dalsi_film;
-    }
-    
-    // vymazanie alokovaneho pola hercov z heapu
-    herci = vymazHercov(herci);
-    
+/*HLAVNA FUNKCIA:...........VYPIS FILMOV V KTORYCH HRAL DANY HEREC..........*/
+void Movies(FILM* start) {
+	if (start != NULL) {
+		char name[MAX_LEN] = { '\0' }, lastname[MAX_LEN] = { '\0' };
+		if (scanf("\n%100s %100s", name, lastname) != 0) {
+			while (start != NULL) {
+				HEREC* act = start->zoznam_h;
+				while (act != NULL) {
+					if (!strcmp(act->m_herca.k_meno, name) && !strcmp(act->m_herca.priezvisko, lastname))
+						printf("%s (%d)\n", start->nazov, start->rok_v);
+					act = act->next;
+				}
+				start = start->next;
+			}
+		}
+		else printf(WRONG_INPUT);
+	}
+	else printf(NOT_LOADED);
 }
 
-// funkcia na vymazanie celeho zoznamu filmov
-FILM *vymazFilmy(FILM *head)
-{
-    FILM *temp = head;
-    FILM *tail;
-
-    while (temp != NULL)
-    {
-        tail = temp->dalsi_film;
-        // vymazanie zoznamu hercov pre aktualny film
-        temp->herci = vymazHercov(temp->herci);
-        free(temp);
-        temp = tail;
-    }
-    return NULL;
+/*HLAVNA FUNKCIA:...........VYPIS ROVNAKYCH HERCOV KTORY HRALI V DVOCH DANYCH FILMOV..........*/
+void Actors(FILM* start){
+	if (start != NULL) {
+		char name1[MAX_LEN] = { '\0' }, name2[MAX_LEN] = { '\0' };
+		if (scanf("\n%100[^\n]\n%100[^\n]", name1, name2) != 0) {
+			HEREC* act1 = NULL, * act2 = NULL;
+			while (start != NULL) {
+				if (!act1 && !strcmp(start->nazov, name1))
+					act1 = start->zoznam_h;
+				if (!act2 && !strcmp(start->nazov, name2))
+					act2 = start->zoznam_h;
+				if (act1 && act2) {
+					HEREC* temp = act2;
+					while (act1 != NULL) {
+						while (act2 != NULL) {
+							if (!strcmp(act1->m_herca.k_meno, act2->m_herca.k_meno) && !strcmp(act1->m_herca.priezvisko, act2->m_herca.priezvisko)) {
+								printf("%s %s (%d)\n", act1->m_herca.k_meno, act1->m_herca.priezvisko, act1->rok_n);
+							}
+							act2 = act2->next;
+						}
+						act2 = temp;
+						act1 = act1->next;
+					}
+					break;
+				}
+				start = start->next;
+			}
+		}
+		else printf(WRONG_INPUT);
+	}
+	else printf(NOT_LOADED);
 }
 
-// nefunguje sortovanie podla abecedy a roku, vsetko ostatne pri tomto prikaze funguje
-void rok(FILM *head)
-{
-    if (head == NULL) {
-        printf(RESULTS_NOT_FOUND_MSG);
-        return;
-    }
-    
-    HEREC *herci = NULL, *temporary = NULL;
-    int duplicate = 0;
-    
-    // prechadzanie vsetkymi filmami
-    while (head != NULL)
-    {
-        // prechadzanie vsetkymi hercami aktualneho prechadzaneho filmu
-        while (head->herci != NULL)
-        {
-            // pomocna premenna pre zoznam hercov
-            temporary = herci;
-            duplicate = 0;
-            
-            // pomocny loop na zistenie, ci dany herec je uz v zozname hercov, ktory
-            // sa ma vytvorit, vypisat a vymazat
-            while (temporary != NULL) {
-                if(!strcmp(head->herci->meno_herca.krstne_meno, temporary->meno_herca.krstne_meno) && !strcmp(head->herci->meno_herca.priezvisko, temporary->meno_herca.priezvisko))
-                    duplicate = 1;
-                temporary = temporary->dalsi_herec;
-            }
-            
-            // ak bol aktualny herec najdeny v novom zozname hercov, nebude pridany
-            if(!duplicate)
-                herci = pridajHerca(herci, head->herci->meno_herca.krstne_meno, head->herci->meno_herca.priezvisko, head->herci->rok_narodenia);
-            head->herci = head->herci->dalsi_herec;
-        }
-        head = head->dalsi_film;
-    }
-    
-    // vypis vsetkych najdenych hercov
-    while (herci != NULL)
-    {
-        if(herci->dalsi_herec != NULL)
-            printf("%s %s (%d), ", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
-        else
-            printf("%s %s (%d)", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
-        herci = herci->dalsi_herec;
-    }
-    
-    printf("\n");
+void outputYear(HEREC* start){
+	HEREC* act = start;
+	while (1) {
+		if (act) {
+			printf("%s %s (%d)", act->m_herca.k_meno, act->m_herca.priezvisko, act->rok_n);
+			act = act->next;
+		}
+		if (act == NULL)
+			break;
+		else
+			printf(", ");
+	}
+	printf("\n");
 }
 
-void vyhladanieHercovVoFilmoch(FILM *head)
-{
-    if (head == NULL) {
-        printf(RESULTS_NOT_FOUND_MSG);
-        return;
-    }
-    
-    FILM *hladany_film1 = malloc(sizeof(FILM)), *hladany_film2 = malloc(sizeof(FILM));
-    HEREC *herci = NULL;
-    int pocet_najdenych_filmov = 0;
-    char string_hladany_film1[101], string_hladany_film2[101], garbage;
-    
-    // po vstupe do funkcie je v stdin stale newline znak, co znamena,
-    // ze s mojim aktualnym riesenim scanf("%100[^\n]s") by tieto scanf
-    // nic nenacitali, preto nacitam newline znak do premennej, cim
-    // "vymazem" newline znak zo stdin
-    scanf("%c", &garbage);
-    scanf("%100[^\n]s", string_hladany_film1);
-    scanf("%c", &garbage);
-    scanf("%100[^\n]s", string_hladany_film2);
-    
-    
-    // prechadzanie zoznamom filmov
-    while (head != NULL)
-    {
-        // ak sa nazov filmu rovna prvemu alebo druhemu nazvu hladaneho filmu
-        if (!strcmp(head->nazov_filmu, string_hladany_film1) || !strcmp(head->nazov_filmu, string_hladany_film2)) {
-            pocet_najdenych_filmov++;
-            
-            // pocet najdenych filmov, kvoli tomu, ze neviem v akom poradi su hladane
-            // filmy v zozname, preto potrebujem pomocnu premennu, aby som vedel
-            // vzdy spravne priradit filmy do pomocnych zoznamov
-            if (pocet_najdenych_filmov == 1) {
-                // kopirovanie filmu do pomocnej premennej
-                strcpy(hladany_film1->nazov_filmu, head->nazov_filmu);
-                strcpy(hladany_film1->meno_rezisera.krstne_meno, head->meno_rezisera.krstne_meno);
-                strcpy(hladany_film1->meno_rezisera.priezvisko, head->meno_rezisera.priezvisko);
-                hladany_film1->rok_vyroby = head->rok_vyroby;
-                hladany_film1->herci = head->herci;
-                hladany_film1->dalsi_film = NULL;
-            } else if (pocet_najdenych_filmov == 2) {
-                strcpy(hladany_film2->nazov_filmu, head->nazov_filmu);
-                strcpy(hladany_film2->meno_rezisera.krstne_meno, head->meno_rezisera.krstne_meno);
-                strcpy(hladany_film2->meno_rezisera.priezvisko, head->meno_rezisera.priezvisko);
-                hladany_film2->rok_vyroby = head->rok_vyroby;
-                hladany_film2->herci = head->herci;
-                hladany_film2->dalsi_film = NULL;
-            }
-        }
-        head = head->dalsi_film;
-    }
-    
-    // vyhladavanie funguje tak, ze pre kazdeho jedneho herca z filmu 1
-    // prechadzam vsetkymi hercami z filmu 2 a porovnam, ci sa meno rovna
-    // ak sa mena rovnaju, vypisem ho
-    while (hladany_film1->herci != NULL)
-    {
-        // pomocna premenna pre hercov z filmu 2
-        herci = hladany_film2->herci;
-        
-        // prechadzanie vsetkymi hercami z filmu 2 na zaklade hercov z filmu 1
-        while (herci != NULL)
-        {
-            if(!strcmp(hladany_film1->herci->meno_herca.krstne_meno, herci->meno_herca.krstne_meno) && !strcmp(hladany_film1->herci->meno_herca.priezvisko, herci->meno_herca.priezvisko))
-                printf("%s %s (%d)\n", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
-            herci = herci->dalsi_herec;
-        }
-        // prechadzanie hercami z filmu 1
-        hladany_film1->herci = hladany_film1->herci->dalsi_herec;
-    }
+HEREC* sort(HEREC* start) {
+	HEREC* act = start, *compare = start->next, *temp = NULL;
+	while (act != NULL) {
+		while (compare != NULL) {
+			if ((temp = (HEREC*)malloc(sizeof(HEREC)))) {
+				if (strcmp(act->m_herca.priezvisko, compare->m_herca.priezvisko) > 0 
+					|| !strcmp(act->m_herca.priezvisko, compare->m_herca.priezvisko) && strcmp(act->m_herca.k_meno, compare->m_herca.k_meno) > 0
+					|| !strcmp(act->m_herca.priezvisko, compare->m_herca.priezvisko) && !strcmp(act->m_herca.k_meno, compare->m_herca.k_meno) && act->rok_n > compare->rok_n)
+				{
+					strcpy(temp->m_herca.priezvisko, act->m_herca.priezvisko);
+					strcpy(act->m_herca.priezvisko, compare->m_herca.priezvisko);
+					strcpy(compare->m_herca.priezvisko, temp->m_herca.priezvisko);
+
+					strcpy(temp->m_herca.k_meno, act->m_herca.k_meno);
+					strcpy(act->m_herca.k_meno, compare->m_herca.k_meno);
+					strcpy(compare->m_herca.k_meno, temp->m_herca.k_meno);
+
+					temp->rok_n = act->rok_n;
+					act->rok_n = compare->rok_n;
+					compare->rok_n = temp->rok_n;
+				}
+			}
+			compare = compare->next;
+		}
+		//compare = start;
+		act = act->next;
+		compare = act;
+	}
+	return start;
 }
 
-int main(int argc, const char * argv[]) {
-    
-    FILM *filmy = NULL;
-    char handler[101];
-    
-    // handler pre prikazy
-    while(scanf("%100s", handler) == 1)
-    {
-        if (!strcmp(handler, "nacitaj"))
-            nacitaj(&filmy);
-        else if (!strcmp(handler, "pridaj"))
-            filmy = pridaj(filmy);
-        else if (!strcmp(handler, "vypis"))
-            vypis(filmy);
-        else if (!strcmp(handler, "filmy"))
-            vypisFilmovPodlaHerca(filmy);
-        else if (!strcmp(handler, "herci"))
-            vyhladanieHercovVoFilmoch(filmy);
-        else if (!strcmp(handler, "vymaz"))
-            filmy = vymazFilm(filmy);
-        else if (!strcmp(handler, "koniec")) {
-            filmy = vymazFilmy(filmy);
-            exit(0);
-        }
-        else if (!strcmp(handler, "rok"))
-            rok(filmy);
-        else
-            printf("Neznamy prikaz.\n");
-    }
-    
-    return 0;
+void Year(FILM* start) {
+	if (start != NULL) {
+		int year = 0, found = 0;
+		HEREC* act = NULL, *copy, *zoznam=NULL;
+		if (scanf("%d", &year) != 0) {
+			while (start != NULL) {
+				if (year == start->rok_v) {
+					act = start->zoznam_h;
+					found = 1;
+					while (act != NULL) {
+						if ((copy = (HEREC*)malloc(sizeof(HEREC)))) {
+							strcpy(copy->m_herca.k_meno, act->m_herca.k_meno);
+							strcpy(copy->m_herca.priezvisko, act->m_herca.priezvisko);
+							copy->rok_n = act->rok_n;
+							copy->next = NULL;
+							HEREC* act_zoznam = zoznam;
+							while (act_zoznam != NULL) {
+								if (!strcmp(copy->m_herca.k_meno, act_zoznam->m_herca.k_meno) && !strcmp(copy->m_herca.priezvisko, act_zoznam->m_herca.priezvisko) && act_zoznam->rok_n == copy->rok_n)
+									break;
+								act_zoznam = act_zoznam->next;
+							}
+							if (act_zoznam == NULL)
+								zoznam = addActor(zoznam, copy);
+						}
+						act = act->next;
+					}
+				}
+				start = start->next;
+			}
+			if (found) {
+				zoznam = sort(zoznam);
+				outputYear(zoznam);
+				unbound(zoznam);
+			}
+			else printf(NOT_FOUND);
+		}
+		else printf(WRONG_INPUT);
+	}
+	else printf(NOT_LOADED);
+}
+
+int main() {
+	FILM* start = NULL;
+	while(1) {
+		char prikaz[8] = { '\0' };
+		if (scanf("%8s", prikaz) != 0);
+		if (!strcmp(prikaz, "nacitaj"))
+			start = load(start);
+		else if (!strcmp(prikaz, "vypis"))
+			output(start);
+		else if (!strcmp(prikaz, "pridaj"))
+			start = addRecord(start);
+		else if (!strcmp(prikaz, "vymaz"))
+			start = removeRecord(start);
+		else if (!strcmp(prikaz, "filmy"))
+			Movies(start);
+		else if (!strcmp(prikaz, "herci"))
+			Actors(start);
+		else if (!strcmp(prikaz, "rok"))
+			Year(start);
+		else if (!strcmp(prikaz, "koniec"))
+			return 0;
+	}
 }
