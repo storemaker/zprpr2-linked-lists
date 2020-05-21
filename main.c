@@ -164,7 +164,7 @@ FILM *vymazNtyFilm(FILM *head, int n)
     // dealokujem hercov z filmu, ktory chcem vymazat
     temp2->herci = vymazHercov(temp2->herci);
     // zmenim pointer na film, ktory nasleduje po vymazanom filme
-    head->dalsi_film = temp2->dalsi_film;
+    temp1->dalsi_film = temp2->dalsi_film;
     
     // dealokujem pointer
     free(temp2);
@@ -386,6 +386,8 @@ void rok(FILM *head)
             printf("%s %s (%d)", herci->meno_herca.krstne_meno, herci->meno_herca.priezvisko, herci->rok_narodenia);
         herci = herci->dalsi_herec;
     }
+    
+    herci = vymazHercov(herci);
     
     printf("\n");
 }
